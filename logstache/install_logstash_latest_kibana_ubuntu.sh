@@ -1,8 +1,5 @@
 #!/bin/bash
 
-#Provided by @mrlesmithjr
-#EveryThingShouldBeVirtual.com
-
 set -e
 # Setup logging
 # Logs stderr and stdout to separate files.
@@ -64,13 +61,15 @@ service elasticsearch restart
 # Install ElasticHQ Plugin to view Elasticsearch Cluster Details http://elastichq.org
 # To view these stats connect to http://logstashFQDNorIP:9200/_plugin/HQ/
 /usr/share/elasticsearch/bin/plugin -install royrusso/elasticsearch-HQ
+/usr/share/elasticsearch/bin/plugin -install elasticsearch/elasticsearch-cloud-aws/2.0.0.RC1
+/usr/share/elasticsearch/bin/plugin -install mobz/elasticsearch-head
 
 # Install Logstash
 cd /opt
 wget https://download.elasticsearch.org/logstash/logstash/packages/debian/logstash_1.4.1-1-bd507eb_all.deb
-wget http://download.elasticsearch.org/logstash/logstash/packages/debian/logstash-contrib_1.4.1-1-6e42745_all.deb
+#wget http://download.elasticsearch.org/logstash/logstash/packages/debian/logstash-contrib_1.4.1-1-6e42745_all.deb
 dpkg -i logstash_*.deb
-dpkg -i logstash-contrib*.deb
+#dpkg -i logstash-contrib*.deb
 /opt/logstash/bin/plugin install contrib
 
 # Create Logstash Init Script
@@ -158,24 +157,23 @@ echo "(example - yourcompany.com)"
 echo -n "Enter your domain name and press enter: "
 read yourdomainname
 echo "You entered ${red}$yourdomainname${NC}"
-echo "ESXi host name or naming convention: (example:esxi|esx|other - Only enter common naming)"
-echo "(example - esxi01,esxi02, etc. - Only enter esxi)"
-echo -n "Enter ESXi host naming convention and press enter: "
-read esxinaming
-echo "You entered ${red}$esxinaming${NC}"
-echo "VMware vCenter host name or naming convention: (example:vcenter|vcsa|other - Only enter common naming)"
-echo "(example - vc01,vc02, etc. - Only enter vc)"
-echo -n "Enter vCenter host naming convention and press enter: "
-read vcenternaming
-echo "You entered ${red}$vcenternaming${NC}"
-echo "Now enter your PFSense Firewall hostname if you use it ${red}(DO NOT include your domain name)${NC}"
-echo "If you do not use PFSense Firewall enter ${red}pfsense${NC}"
-echo -n "Enter PFSense Hostname: "
-read pfsensehostname
-echo "You entered ${red}$pfsensehostname${NC}"
+echo "SIP Proxy host name or naming convention: (example:sp|vproxy|other - Only enter common naming)"
+echo "(example - sp01,sp02, etc. - Only enter sp)"
+echo -n "Enter SIP Proxy host naming convention and press enter: "
+read spnaming
+echo "You entered ${red}$spnaming${NC}"
+echo "SIP-Proxy Proxy-Host host name or naming convention: (example:phost|proxy|other - Only enter common naming)"
+echo "(example - phost01,phost02, etc. - Only enter phost)"
+echo -n "Enter Proxy-Host host naming convention and press enter: "
+read phostnaming
+echo "You entered ${red}$phostnaming${NC}"
+echo "Now enter your Cisco-ASA Firewall hostname if you use it ${red}(DO NOT include your domain name)${NC}"
+echo "If you do not use Cisco-ASA Firewall enter ${red}asa${NC}"
+echo -n "Enter Cisco-ASA Hostname: "
+read asahostname
+echo "You entered ${red}$asahostname${NC}"
 
 # Create Logstash configuration file
-mkdir /etc/logstash
 tee -a /etc/logstash/logstash.conf <<EOF
 input {
   redis {
@@ -190,59 +188,35 @@ input {
                 port => "514"
         }
 }
-input {
-        tcp {
-                type => "eventlog"
-                port => 3515
-                format => 'json'
-        }
-}
-input {
-        tcp {
-                type => "iis"
-                port => 3525
-                format => 'json'
-        }
-}
 filter {
         if [type] == "syslog" {
                 dns {
                         reverse => [ "host" ] action => "replace"
                 }
-                if [host] =~ /.*?(nsvpx).*?($yourdomainname)?/ {
+                if [host] =~ /.*?(lb2-2-).*?($yourdomainname)?/ {
                         mutate {
-                                add_tag => [ "Netscaler", "Ready" ]
+                                add_tag => [ "F5", "Ready" ]
                         }
                 }
-                if [host] =~ /.*?($pfsensehostname).*?($yourdomainname)?/ {
+                if [host] =~ /.*?($asahostname).*?($yourdomainname)?/ {
                         mutate {
-                                add_tag => [ "PFSense", "Ready" ]
+                                add_tag => [ "Cisco-ASA", "Ready" ]
                         }
                 }
-                if [host] =~ /.*?($esxinaming).*?($yourdomainname)?/ {
+                if [host] =~ /.*?($spnaming).*?($yourdomainname)?/ {
                         mutate {
-                                add_tag => [ "VMware", "Ready" ]
+                                add_tag => [ "SIP-Proxy", "Ready" ]
                         }
                 }
-                if [host] =~ /.*?($vcenternaming).*?($yourdomainname)?/ {
+                if [host] =~ /.*?($phostnaming).*?($yourdomainname)?/ {
                         mutate {
-                                add_tag => [ "vCenter", "Ready" ]
+                                add_tag => [ "Proxy-Host", "Ready" ]
                         }
                 }
                 if "Ready" not in [tags] {
                         mutate {
                                 add_tag => [ "syslog" ]
                         }
-                }
-        }
-        if [type] == "eventlog" {
-                mutate {
-                        add_tag => [ "WindowsEventLog" ]
-                }
-        }
-        if [type] == "iis" {
-                mutate {
-                        add_tag => [ "IISLogs" ]
                 }
         }
 }
@@ -280,7 +254,7 @@ filter {
         }
 }
 filter {
-        if "VMware" in [tags] {
+        if "SIP-Proxy" in [tags] {
                 grok {
                         break_on_match => false
                         match => [
@@ -319,7 +293,7 @@ filter {
                 }
         }
         if "_grokparsefailure" in [tags] {
-                if "VMware" in [tags] {
+                if "SIP-Proxy" in [tags] {
                         grok {
                                 break_on_match => false
                                 match => [
@@ -331,7 +305,7 @@ filter {
         }
 }
 filter {
-        if "vCenter" in [tags] {
+        if "Proxy-Host" in [tags] {
                 grok {
                         break_on_match => false
                         match => [
@@ -355,13 +329,13 @@ filter {
                         rename => [ "host", "@source_host" ]
                         rename => [ "hostname", "syslog_source-hostname" ]
                         rename => [ "program", "message_program" ]
-                        rename => [ "message_vce_server", "syslog_source-hostname" ]
+                        rename => [ "message_phoste_server", "syslog_source-hostname" ]
                         remove_field => [ "@version", "type", "path" ]
                 }
         }
 }
 filter {
-    if "PFSense" in [tags] {
+    if "Cisco-ASA" in [tags] {
         grok {
             add_tag => [ "firewall" ]
             match => [ "message", "<(?<evtid>.*)>(?<datetime>(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(?:(?:0[1-9])|(?:[12][0-9])|(?:3[01])|[1-9]) (?:2[0123]|[01]?[0-9]):(?:[0-5][0-9]):(?:[0-5][0-9])) (?<prog>.*?): (?<msg>.*)" ]
@@ -418,7 +392,7 @@ filter {
 
 }
 filter {
-        if "PFSense" in [tags] {
+        if "Cisco-ASA" in [tags] {
                 mutate {
                         replace => [ "@source_host", "%{host}" ]
                 }
@@ -428,12 +402,12 @@ filter {
         }
 }
 filter {
-        if "Netscaler" in [tags] {
+        if "F5" in [tags] {
                 grok {
                         break_on_match => true
                         match => [
-                                "message", "<%{POSINT:syslog_pri}> %{DATE_US}:%{TIME} GMT %{SYSLOGHOST:syslog_hostname} %{GREEDYDATA:netscaler_message} : %{DATA} %{INT:netscaler_spcbid} - %{DATA} %{IP:netscaler_client_ip} - %{DATA} %{INT:netscaler_client_port} - %{DATA} %{IP:netscaler_vserver_ip} - %{DATA} %{INT:netscaler_vserver_port} %{GREEDYDATA:netscaler_message} - %{DATA} %{WORD:netscaler_session_type}",
-                                "message", "<%{POSINT:syslog_pri}> %{DATE_US}:%{TIME} GMT %{SYSLOGHOST:syslog_hostname} %{GREEDYDATA:netscaler_message}"
+                                "message", "<%{POSINT:syslog_pri}> %{DATE_US}:%{TIME} GMT %{SYSLOGHOST:syslog_hostname} %{GREEDYDATA:f5_message} : %{DATA} %{INT:f5_spcbid} - %{DATA} %{IP:f5_client_ip} - %{DATA} %{INT:f5_client_port} - %{DATA} %{IP:f5_vserver_ip} - %{DATA} %{INT:f5_vserver_port} %{GREEDYDATA:f5_message} - %{DATA} %{WORD:f5_session_type}",
+                                "message", "<%{POSINT:syslog_pri}> %{DATE_US}:%{TIME} GMT %{SYSLOGHOST:syslog_hostname} %{GREEDYDATA:f5_message}"
                         ]
                 }
                 syslog_pri { }
@@ -441,10 +415,10 @@ filter {
                         replace => [ "@source_host", "%{host}" ]
                 }
                 mutate {
-                        replace => [ "@message", "%{netscaler_message}" ]
+                        replace => [ "@message", "%{f5_message}" ]
                 }
                 geoip {
-                        source => "netscaler_client_ip"
+                        source => "f5_client_ip"
                         target => "geoip"
                         add_field => [ "[geoip][coordinates]", "%{[geoip][longitude]}" ]
                         add_field => [ "[geoip][coordinates]", "%{[geoip][latitude]}"  ]
@@ -481,68 +455,6 @@ filter {
                         match => [
                                 "message", "%{DATA:apache_vhost} "
                         ]
-                }
-        }
-}
-filter {
-        if [type] == "eventlog" {
-                grep {
-                        match => { "EventReceivedTime"  => "\d+"}
-                }
-                mutate {
-                        lowercase => [ "EventType", "FileName", "Hostname", "Severity" ]
-                }
-                mutate {
-                        rename => [ "Hostname", "@source_host" ]
-                }
-                date {
-                        match => [ "EventReceivedTime", "UNIX" ]
-                }
-                mutate {
-                        rename => [ "Message", "@message" ]
-                        rename => [ "Severity", "eventlog_severity" ]
-                        rename => [ "SeverityValue", "eventlog_severity_code" ]
-                        rename => [ "Channel", "eventlog_channel" ]
-                        rename => [ "SourceName", "eventlog_program" ]
-                        rename => [ "SourceModuleName", "nxlog_input" ]
-                        rename => [ "Category", "eventlog_category" ]
-                        rename => [ "EventID", "eventlog_id" ]
-                        rename => [ "RecordNumber", "eventlog_record_number" ]
-                        rename => [ "ProcessID", "eventlog_pid" ]
-                }
-                mutate {
-                        remove => [ "SourceModuleType", "EventTimeWritten", "EventTime", "EventReceivedTime", "EventType" ]
-                }
-        }
-}
-filter {
-        if [type] == "iis" {
-                if [message] =~ "^#" {
-                                drop {}
-                }
-                grok {
-                        match => [
-                                "message", "<%{POSINT:syslog_pri}>%{SYSLOGTIMESTAMP} %{WORD:servername} %{TIMESTAMP_ISO8601} %{IP:hostip} %{WORD:method} %{URIPATH:request} (?:%{NOTSPACE:query}|-) %{NUMBER:port} (?:%{NOTSPACE:param}|-) %{IPORHOST:clientip} %{NOTSPACE:agent} %{NUMBER:response} %{NUMBER:subresponse} %{NUMBER:bytes} %{NUMBER:time-taken}",
-                                "message", "<%{POSINT:syslog_pri}>%{SYSLOGTIMESTAMP} %{WORD:servername} %{GREEDYDATA:syslog_message}"
-                        ]
-                }
-                date {
-                         match => ["eventtime", "YY-MM-dd HH:mm:ss"]
-                }
-                mutate {
-                        replace => [ "@source_host", "%{servername}" ]
-                }
-                mutate {
-                        replace => [ "@message", "%{message}" ]
-                }
-                geoip {
-                        source => "clientip"
-                        target => "geoip"
-                        add_field => [ "[geoip][coordinates]", "%{[geoip][longitude]}" ]
-                        add_field => [ "[geoip][coordinates]", "%{[geoip][latitude]}"  ]
-                }
-                mutate {
-                        convert => [ "[geoip][coordinates]", "float" ]
                 }
         }
 }
