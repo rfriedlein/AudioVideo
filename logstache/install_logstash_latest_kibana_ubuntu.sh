@@ -482,7 +482,6 @@ service rsyslog restart
 service logstash restart
 
 # Install and configure Kibana3 frontend
-# This is in place seeing as Apache2 on Ubuntu 14.04 default website is no longer /var/www but instead /var/www/html. This allows for backwards compatability as well as forward compatability.
 cd /var/www/
 wget https://download.elasticsearch.org/kibana/kibana/kibana-3.1.0.tar.gz
 tar zxvf kibana-*
