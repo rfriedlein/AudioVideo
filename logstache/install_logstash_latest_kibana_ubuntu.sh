@@ -38,7 +38,7 @@ service redis-server restart
 
 # Install Elasticsearch
 cd /opt
-wget https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.2.0.deb
+wget https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.2.1.deb
 dpkg -i elasticsearch-*.deb
 
 # Configuring Elasticsearch
@@ -483,15 +483,11 @@ service logstash restart
 
 # Install and configure Kibana3 frontend
 # This is in place seeing as Apache2 on Ubuntu 14.04 default website is no longer /var/www but instead /var/www/html. This allows for backwards compatability as well as forward compatability.
-if [ ! -d "/var/www/html" ]; then
-	mkdir /var/www/html
-fi
-cd /var/www/html
-wget https://download.elasticsearch.org/kibana/kibana/kibana-3.0.1.tar.gz
+cd /var/www/
+wget https://download.elasticsearch.org/kibana/kibana/kibana-3.1.0.tar.gz
 tar zxvf kibana-*
 rm kibana-*.tar.gz
 mv kibana-* kibana
-ln -s /var/www/html/kibana /var/www/kibana
 
 # Install elasticsearch curator http://www.elasticsearch.org/blog/curator-tending-your-time-series-indices/
 apt-get -y install python-pip
