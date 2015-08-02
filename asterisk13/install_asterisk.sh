@@ -119,4 +119,4 @@ echo "lets set root password and secure our MySQL installation."
 echo "we have no root password, so just hit enter."
 mysql_secure_installation
 
-echo "All done!"
+echo "Your Asterisk 13 and FreePBX 13 with Google support installation completed!"
