@@ -99,12 +99,13 @@ mysql -u root -e "flush privileges;"
 
 cd /usr/src/freepbx
 
-./start_asterisk start
-./install
 echo "When asked for database credentials, use these."
 echo "Database username: asteriskuser"
 echo "Database password: $ASTERISK_DB_PW"
 echo "Be sure to save these!"
+
+./start_asterisk start
+./install
 fwconsole chown
 fwconsole ma installall
 fwconsole reload
