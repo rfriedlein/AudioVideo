@@ -101,6 +101,10 @@ cd /usr/src/freepbx
 
 ./start_asterisk start
 ./install
+echo "When asked for database credentials, use these."
+echo "Database username: asteriskuser"
+echo "Database password: $ASTERISK_DB_PW"
+echo "Be sure to save these!"
 fwconsole chown
 fwconsole ma installall
 fwconsole reload
@@ -110,6 +114,8 @@ fwconsole chown
 ln -s /var/lib/asterisk/moh /var/lib/asterisk/mohmp3
 fwconsole stop && fwconsole start
 
+echo "lets set root password and secure our MySQL installation."
+echo "we have no root password, so just hit enter."
 mysql_secure_installation
 
 echo "All done!"
