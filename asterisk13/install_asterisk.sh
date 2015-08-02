@@ -115,8 +115,5 @@ fwconsole chown
 ln -s /var/lib/asterisk/moh /var/lib/asterisk/mohmp3
 fwconsole stop && fwconsole start
 
-echo "lets set root password and secure our MySQL installation."
-echo "we have no root password, so just hit enter."
-mysql_secure_installation
-
 echo "Your Asterisk 13 and FreePBX 13 with Google support installation completed!"
+echo "As root run mysql_secure_installation to secure MySQL and set root password"
