@@ -1,4 +1,7 @@
-n.com 07/31/2015    ##
+#!/bin/bash
+
+##################################
+## rfrieldein.com 07/31/2015    ##
 ## robyn@rfriedlein.com         ##
 ## Install Asterisk 13 Latest   ##
 ## Install FreePBX              ##
