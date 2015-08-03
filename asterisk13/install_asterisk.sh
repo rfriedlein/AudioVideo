@@ -107,6 +107,8 @@ echo "Be sure to save these!"
 ./start_asterisk start
 ./install
 fwconsole chown
+fwconsole ma enablerepo unsupported stable unstable commerical
+fwconsole ma downloadinstall announcement bulkextensions conferences directory findmefollow ivr presencestate recordings ttsengines arimanager configedit donotdisturb paging queuemetrics restart speeddial asterisk-cli contactmanager daynight extensionsettings hotelwakeup manager parking queueprio ringgroups timeconditions backup callforward certman dictate motif phonebook queues setcid tts vmblast
 fwconsole ma refreshsignatures
 fwconsole chown
 
