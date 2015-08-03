@@ -107,8 +107,6 @@ echo "Be sure to save these!"
 ./start_asterisk start
 ./install
 fwconsole chown
-fwconsole ma installall
-fwconsole reload
 fwconsole ma refreshsignatures
 fwconsole chown
 
