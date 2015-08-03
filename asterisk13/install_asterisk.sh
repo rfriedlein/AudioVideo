@@ -104,6 +104,8 @@ echo "Database username: asteriskuser"
 echo "Database password: $ASTERISK_DB_PW"
 echo "Be sure to save these!"
 
+/etc/init.d/asterisk stop
+
 ./start_asterisk start
 ./install
 fwconsole chown
