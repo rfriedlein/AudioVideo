@@ -108,7 +108,7 @@ echo "Be sure to save these!"
 /etc/init.d/asterisk stop
 
 ./start_asterisk start
-./install --dbengine="mysql" --dbname="asterisk" --cdrdbname="asteriskcdrdb" --dbuser="asteriskuser" --dbpass="${ASTERISK_DB_PW}" --user="asterisk" --group="asterisk" --webroot="/var/www/html" -n
+./install --dbengine="mysql" --dbname="asterisk" --cdrdbname="asteriskcdrdb" --dbuser="asteriskuser" --dbpass="${ASTERISK_DB_PW}" --user="asterisk" --group="asterisk" --webroot="/var/www/html" 
 fwconsole chown
 fwconsole ma enablerepo standard extended unsupported commercial
 fwconsole ma downloadinstall announcement bulkextensions conferences directory findmefollow ivr presencestate recordings ttsengines arimanager configedit donotdisturb paging queuemetrics restart speeddial asterisk-cli contactmanager daynight extensionsettings hotelwakeup manager parking queueprio ringgroups timeconditions backup callforward certman dictate motif phonebook queues setcid tts vmblast
