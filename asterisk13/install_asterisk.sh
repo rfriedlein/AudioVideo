@@ -3,11 +3,13 @@
 ##################################
 ## rfrieldein.com 07/31/2015    ##
 ## robyn@rfriedlein.com         ##
+## v0.15                        ##
 ## Install Asterisk 13 Latest   ##
 ## Install FreePBX              ##
 ## Install Google Voice Support ##
 ##################################
 
+export ASTERISK_DB_PW=`dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 - | cut -c2-18`
 
 if [ "$(id -u)" != "0" ]; then
    echo "This script must be run as root" 1>&2
@@ -87,8 +89,7 @@ cp /etc/apache2/apache2.conf /etc/apache2/apache2.conf_orig
 sed -i 's/^\(User\|Group\).*/\1 asterisk/' /etc/apache2/apache2.conf
 service apache2 restart
 
-#MySQL - To do: Do this better
-export ASTERISK_DB_PW=`dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 - | cut -c2-18`
+#MySQL DB's
 
 mysqladmin -u root create asterisk
 mysqladmin -u root create asteriskcdrdb
@@ -107,7 +108,7 @@ echo "Be sure to save these!"
 /etc/init.d/asterisk stop
 
 ./start_asterisk start
-./install
+./install --dbengine="mysql" --dbname="asterisk" --cdrdbname="asteriskcdrdb" --dbuser="asteriskuser" --dbpass="${ASTERISK_DB_PW}" --user="asterisk" --group="asterisk" -n
 fwconsole chown
 fwconsole ma enablerepo standard extended unsupported commercial
 fwconsole ma downloadinstall announcement bulkextensions conferences directory findmefollow ivr presencestate recordings ttsengines arimanager configedit donotdisturb paging queuemetrics restart speeddial asterisk-cli contactmanager daynight extensionsettings hotelwakeup manager parking queueprio ringgroups timeconditions backup callforward certman dictate motif phonebook queues setcid tts vmblast
