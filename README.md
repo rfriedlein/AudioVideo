@@ -1,4 +1,4 @@
 AudioVideo
 ==========
 
-Media center stuff
+Collection of random scrips.
