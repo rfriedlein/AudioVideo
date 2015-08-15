@@ -3,7 +3,7 @@
 ##################################
 ## rfrieldein.com 07/31/2015    ##
 ## robyn@rfriedlein.com         ##
-## v0.15                        ##
+## v0.16                        ##
 ## Install Asterisk 13 Latest   ##
 ## Install FreePBX              ##
 ## Install Google Voice Support ##
@@ -108,17 +108,18 @@ echo "Be sure to save these!"
 /etc/init.d/asterisk stop
 
 ./start_asterisk start
-./install --dbengine="mysql" --dbname="asterisk" --cdrdbname="asteriskcdrdb" --dbuser="asteriskuser" --dbpass="${ASTERISK_DB_PW}" --user="asterisk" --group="asterisk" --webroot="/var/www/html" 
+./install
 fwconsole chown
 fwconsole ma enablerepo standard extended unsupported commercial
-fwconsole ma downloadinstall announcement bulkextensions conferences directory findmefollow ivr presencestate recordings ttsengines arimanager configedit donotdisturb paging queuemetrics restart speeddial asterisk-cli contactmanager daynight extensionsettings hotelwakeup manager parking queueprio ringgroups timeconditions backup callforward certman dictate motif phonebook queues setcid tts vmblast
+fwconsole ma downloadinstall motif
 fwconsole ma refreshsignatures
 fwconsole chown
 
 ln -s /var/lib/asterisk/moh /var/lib/asterisk/mohmp3
 fwconsole stop && fwconsole start
 
-service asterisk restart
+service asterisk stop
+service asterisk start
 
 echo "Your Asterisk 13 and FreePBX 13 with Google support installation completed!"
 echo "As root run mysql_secure_installation to secure MySQL and set root password"
