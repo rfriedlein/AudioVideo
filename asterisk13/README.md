@@ -1,5 +1,4 @@
-# Asterisk 13 with FreePBX 13 Install
-# Fail2Ban Install
+# Asterisk 13 + FreePBX 13 Install & Fail2Ban Install
 These scripts automate the installation. You will be asked a few questions and at the end you will need to secure MySQL.
 
 ## Install
