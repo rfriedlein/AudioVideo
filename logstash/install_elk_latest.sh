@@ -120,7 +120,6 @@ mv logstash-*/ logstash
 /opt/logstash/bin/plugin install logstash-filter-csv
 /opt/logstash/bin/plugin install logstash-filter-elasticsearch
 /opt/logstash/bin/plugin install logstash-filter-multiline
-/opt/logstash/bin/plugin install logstash-filter-yaml
 /opt/logstash/bin/plugin install logstash-filter-mutate
 /opt/logstash/bin/plugin install logstash-filter-range
 /opt/logstash/bin/plugin install logstash-filter-drop
