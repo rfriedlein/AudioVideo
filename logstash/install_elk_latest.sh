@@ -3,8 +3,8 @@
 set -e
 # Setup logging
 # Logs stderr and stdout to separate files.
-exec 2> >(tee "./Logstash_Kibana3/install_logstash_kibana_ubuntu.err")
-exec > >(tee "./Logstash_Kibana3/install_logstash_kibana_ubuntu.log")
+exec 2> >(tee "/opt/install_logstash_kibana_ubuntu.err")
+exec > >(tee "/opt/install_logstash_kibana_ubuntu.log")
 
 # Setting colors for output
 red="$(tput setaf 1)"
@@ -135,9 +135,7 @@ mv logstash-*/ logstash
 /opt/logstash/bin/plugin install logstash-output-elasticsearch_java
 /opt/logstash/bin/plugin install logstash-output-stdout
 /opt/logstash/bin/plugin install logstash-output-elasticsearch_http
-/opt/logstash/bin/plugin install logstash-output-newrelic
 /opt/logstash/bin/plugin install logstash-output-pagerduty
-/opt/logstash/bin/plugin install logstash-output-opentsdb
 
 # Create Logstash Init Script
 (
@@ -217,24 +215,6 @@ chmod +x /etc/init.d/logstash
 
 # Enable logstash start on bootup
 update-rc.d logstash defaults 96 04
-
-echo "Setting up logstash for different host type filtering"
-echo "Your domain name:"
-echo "(example - yourcompany.com)"
-echo -n "Enter your domain name and press enter: "
-read yourdomainname
-echo "You entered ${red}$yourdomainname${NC}"
-echo "Now enter your PFSense Firewall hostname if you use it ${red}(DO NOT include your domain name)${NC}"
-echo "If you do not use PFSense Firewall enter ${red}pfsense${NC}"
-echo -n "Enter PFSense Hostname: "
-read pfsensehostname
-echo "You entered ${red}$pfsensehostname${NC}"
-echo "Now enter your Citrix Netscaler naming scheme if you use it ${red}(DO NOT include your domain name)${NC}"
-echo "For example....Your Netscaler's are named nsvpx01, nsvpx02....Only enter nsvpx for the naming scheme"
-echo "If you do not use Citrix Netscaler's enter ${red}netscaler${NC}"
-echo -n "Enter Citrix Netscaler Naming scheme: "
-read netscalernaming
-echo "You entered ${red}$netscalernaming${NC}"
 
 # Create Logstash configuration file
 mkdir /etc/logstash
@@ -662,15 +642,15 @@ filter {
 #### All in One install mode ####
 # Send output to local elasticsearch instance
 # Change to one of the other modes and comment out below if needed
-output {
-        elasticsearch_http {
-                host => "127.0.0.1"
-                flush_size => 1
-		template_overwrite => true
-                manage_template => true
-                template => "/opt/logstash/lib/logstash/outputs/elasticsearch/elasticsearch-template.json"
-        }
-}
+#output {
+#        elasticsearch_http {
+#                host => "127.0.0.1"
+#                flush_size => 1
+#		template_overwrite => true
+#                manage_template => true
+#                template => "/opt/logstash/lib/logstash/outputs/elasticsearch/elasticsearch-template.json"
+#        }
+#}
 #### Multicast discovery mode ####
 # Send output to the ES cluster logstash-cluster using a predefined template
 # The following settings will be used during the initial setup which will be used for using multicast ES nodes
@@ -687,22 +667,20 @@ output {
 # Send output to the ES cluster logstash-cluster using a predefined template
 # The settings below will be used when you change to unicast discovery mode for all ES nodes
 # Make sure to comment out the above multicast discovery mode section
-#output {
-#        elasticsearch {
-#                cluster => "logstash-cluster"
-#                host => "logstash"
-#                port => "9300"
-#                protocol => "node"
-#                flush_size => "1"
-#                manage_template => true
-#                template_overwrite => true
-#                template => "/opt/logstash/lib/logstash/outputs/elasticsearch/elasticsearch-template.json"
-#        }
-#}
+output {
+        elasticsearch {
+                hosts => "logstash:9300"
+                protocol => "node"
+                flush_size => "1"
+                manage_template => true
+                template_overwrite => true
+                template => "/opt/logstash/lib/logstash/outputs/elasticsearch/elasticsearch-template.json"
+        }
+}
 EOF
 
 # Update elasticsearch-template for logstash
-mv /opt/logstash/lib/logstash/outputs/elasticsearch/elasticsearch-template.json /opt/logstash/lib/logstash/outputs/elasticsearch/elasticsearch-template.json.orig
+mkdir -p /opt/logstash/lib/logstash/outputs/elasticsearch 
 tee -a /opt/logstash/lib/logstash/outputs/elasticsearch/elasticsearch-template.json <<EOF
 {
   "template" : "logstash-*",
@@ -757,6 +735,7 @@ tee -a /opt/logstash/lib/logstash/outputs/elasticsearch/elasticsearch-template.j
 EOF
 
 # Create IPTables Grok pattern
+mkdir /opt/logstash/patterns
 tee -a /opt/logstash/patterns/IPTABLES <<EOF
 NETFILTERMAC %{COMMONMAC:dst_mac}:%{COMMONMAC:src_mac}:%{ETHTYPE:ethtype}
 ETHTYPE (?:(?:[A-Fa-f0-9]{2}):(?:[A-Fa-f0-9]{2}))
@@ -774,12 +753,134 @@ if [ ! -d "/usr/share/nginx/html" ]; then
 	sed -i -e 's|root /usr/share/nginx/www|root /usr/share/nginx/html|' /etc/nginx/sites-enabled/default
 fi
 
-# Install and configure Kibana3 frontend
+#nginx kibana config
+tee -a /etc/nginx/sites-available/kibana <<EOF
+upstream kibana {
+    server 127.0.0.1:5601 fail_timeout=0;
+}
+
+server {
+    listen      80;
+    return 301 https://$HOSTNAME.domain.com;
+}
+
+server {
+  listen                *:443 ;
+  ssl on;
+  ssl_certificate /etc/nginx/ssl/$HOSTNAME.crt;
+  ssl_certificate_key /etc/nginx/ssl/$HOSTNAME.key;
+
+  server_name           $HOSTNAME.domain.com;
+  access_log            /var/log/nginx/access.log;
+  error_log		/var/log/nginx/error.log;
+
+  location / {
+    auth_basic "Restricted";
+    auth_basic_user_file /etc/nginx/conf.d/kibana.htpasswd;
+    proxy_pass http://127.0.0.1:5601;
+  }
+}
+EOF
+
+ln -s /etc/nginx/sites-available/kibana /etc/nginx/sites-enabled/kibana
+rm /etc/nginx/sites-enabled/default
+
+# Install and configure Kibana4 frontend
 cd /usr/share/nginx/html
 wget https://download.elastic.co/kibana/kibana/kibana-4.2.1-linux-x64.tar.gz
 tar zxvf kibana-*
 rm kibana-*.tar.gz
 mv kibana-* /opt/kibana
+
+tee -a /etc/init.d/kibana <<EOF
+#!/bin/sh
+#
+### BEGIN INIT INFO
+# Provides:          kibana4_init
+# Required-Start:    $network $remote_fs $named
+# Required-Stop:     $network $remote_fs $named
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Starts kibana4_init
+# Description:       Starts kibana4_init using start-stop-daemon
+### END INIT INFO
+
+#configure this with wherever you unpacked kibana:
+KIBANA_BIN=/opt/kibana/bin
+
+NAME=kibana4
+PID_FILE=/var/run/$NAME.pid
+PATH=/bin:/usr/bin:/sbin:/usr/sbin:$KIBANA_BIN
+DAEMON=$KIBANA_BIN/kibana
+DESC="Kibana4"
+
+if [ `id -u` -ne 0 ]; then
+	echo "You need root privileges to run this script"
+	exit 1
+fi
+
+. /lib/lsb/init-functions
+
+if [ -r /etc/default/rcS ]; then
+	. /etc/default/rcS
+fi
+
+case "$1" in
+  start)
+	log_daemon_msg "Starting $DESC"
+
+	pid=`pidofproc -p $PID_FILE kibana`
+	if [ -n "$pid" ] ; then
+		log_begin_msg "Already running."
+		log_end_msg 0
+		exit 0
+	fi
+
+	# Start Daemon
+	start-stop-daemon --start --pidfile "$PID_FILE" --make-pidfile --background --exec $DAEMON
+	log_end_msg $?
+	;;
+  stop)
+	log_daemon_msg "Stopping $DESC"
+
+	if [ -f "$PID_FILE" ]; then
+		start-stop-daemon --stop --pidfile "$PID_FILE" \
+			--retry=TERM/20/KILL/5 >/dev/null
+		if [ $? -eq 1 ]; then
+			log_progress_msg "$DESC is not running but pid file exists, cleaning up"
+		elif [ $? -eq 3 ]; then
+			PID="`cat $PID_FILE`"
+			log_failure_msg "Failed to stop $DESC (pid $PID)"
+			exit 1
+		fi
+		rm -f "$PID_FILE"
+	else
+		log_progress_msg "(not running)"
+	fi
+	log_end_msg 0
+	;;
+  status)
+	status_of_proc -p $PID_FILE kibana kibana && exit 0 || exit $?
+    ;;
+  restart|force-reload)
+	if [ -f "$PID_FILE" ]; then
+		$0 stop
+		sleep 1
+	fi
+	$0 start
+	;;
+  *)
+	log_success_msg "Usage: $0 {start|stop|restart|force-reload|status}"
+	exit 1
+	;;
+esac
+
+exit 0
+EOF
+
+chmod +x /etc/init.d/kibana
+update-rc.d kibana defaults
+service kibana start
 
 # Restart NGINX
 service nginx restart
